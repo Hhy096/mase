@@ -17,7 +17,6 @@ def calculate_modules(module, in_data, out_data):
             "backward_computations": backward_computations,
             "input_buffer_size": input_size,
             "output_buffer_size": output_size,
-
             "number_point_operations": computations
         }
 
@@ -145,5 +144,21 @@ def calculate_modules(module, in_data, out_data):
             "input_buffer_size": in_data[0].numel(),
             "output_buffer_size": out_data[0].numel(),
         }
+
+    elif isinstance(module, torch.nn.modules.batchnorm.BatchNorm1d):
+        # Accesses to E[x] and Var[x] (all channel size)
+        total_parameters = 2 * module.num_features
+        # (x-running_mean)/running variance
+        # multiply by gamma and beta addition
+        computations = 4 * in_data[0].numel()
+        backward_computations = 4 * in_data[0].numel()
+        return {
+            "total_parameters": total_parameters,
+            "computations": computations,
+            "backward_computations": backward_computations,
+            "input_buffer_size": in_data[0].numel(),
+            "output_buffer_size": out_data[0].numel(),
+        }
+
     else:
         print("Unsupported module type for analysis:", type(module))

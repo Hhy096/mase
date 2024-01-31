@@ -65,7 +65,7 @@
        print(node.meta["mase"].model(xs))
        break
    ```
-The output are 
+The output are as follows:
 
 ```
 tensor([[0.6366, 0.2144, 0.0000, 0.0000, 3.8191],
@@ -89,3 +89,47 @@ tensor([[0.1210, 0.0000, 0.0000, 0.0000, 3.6378],
         [0.0000, 0.0000, 3.3599, 1.5023, 0.0000]], grad_fn=<ReluBackward0>)
 ```
 There are slightly differences between each entry of the two outputs, indicating that the weights of these layers are indeed quantised.
+
+#### Optional Task
+
+For counting the number of FLOPs, we need to follow the following steps:
+- Iterate each node in the given mase graph.
+- For each node, 
+  - If the data input is integer, then FLOP for this node should be $0$.
+  - If the data input is float, then FLOP for this node shoud be the `computations` result of the function `calculate_modules` from `chop.passes.graph.analysis.flop_estimator.calculator`.
+-  After getting the FLOP, add it to `node.meta["mase"].parameters["common"]["flop"]` as a new attribute of the node.
+
+The codes are as follows:
+```python
+from chop.passes.graph.analysis.flop_estimator.calculator import calculate_modules
+
+'''
+count the number of flops of models
+'''
+def count_flops(graph):
+    total_flop = 0
+    for node in graph.fx_graph.nodes:
+
+        if node.op == "call_module":
+
+            ### distinguish float or integere
+            data_type = node.meta["mase"].parameters["common"]["args"]["data_in_0"]['type']
+
+            if data_type == "float":
+                in_data = node.meta["mase"].parameters["common"]["args"]["data_in_0"]["value"]
+                out_data = node.meta["mase"].parameters["common"]["results"]["data_out_0"]["value"]
+
+                flop = calculate_modules(module=node.meta["mase"].module, in_data=[in_data], out_data=[out_data])
+
+                node.meta["mase"].parameters["common"]["flop"] = flop["computations"]
+                total_flop += flop["computations"]
+
+            elif data_type == "integer":
+
+                flop = 0
+                node.meta["mase"].parameters["common"]["flop"] = 0
+                total_flop += 0
+    
+    return graph, {"total_flops": total_flop}
+```
+After implementing the pass function, apply it to `mg` and `ori_mg` to check the FLOPs, we can get that `{total: 680}` for `mg` and `{total:1320}` for `ori_mg`. This indicates that the graph (`mg`) after quantisation has the whole linear layer to be out of considerations from floating computations.
