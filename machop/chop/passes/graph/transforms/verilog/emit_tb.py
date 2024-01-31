@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 from pathlib import Path
 
 import cocotb
+
+### for importing mase_cocotb in the upper directory
+import sys
+sys.path.append("..")
+
 from mase_cocotb.testbench import Testbench
 from mase_cocotb.interfaces.streaming import StreamDriver, StreamMonitor
 from mase_cocotb.z_qlayers.tensor_cast import quantize_to_int
