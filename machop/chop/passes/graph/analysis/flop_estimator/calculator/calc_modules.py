@@ -17,6 +17,8 @@ def calculate_modules(module, in_data, out_data):
             "backward_computations": backward_computations,
             "input_buffer_size": input_size,
             "output_buffer_size": output_size,
+
+            "number_point_operations": computations
         }
 
     elif isinstance(module, torch.nn.Embedding):

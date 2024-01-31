@@ -45,4 +45,47 @@
     ```
     We can find that `type` and `precision` are changed from `float` to `integer` and from `[32]` to `[8,4]` respectively and all the other things remained the same, indicating the graph is updated with nodes type and precision in linear layer.
 
-5. 
+5. The test model in lab1 is consisted of `linear` layers. In this case, load the model and repeat the same procedure provided in the lab2 instruction file can perform the same quantisation flow the the model.
+
+6. Because the quantisation procedure happens only in the forward pass, simply showing the weights of `mg` and `ori_mg` cannot state that the layers are indeed quanitsed. Therefore, inputting same input to the model represented by `mg` and `ori_mg` and observing whether there are differences can be the proof of the quantisation procedure.
+   ```python
+   ### load same data
+   test_x = iter(data_module.val_dataloader())
+   xs, ys = next(test_x)
+
+   ### mg
+   for node in mg.fx_graph.nodes:
+       ### print nodes with linear op
+       print(node.meta["mase"].model(xs))
+       break
+
+   ### ori_mg
+   for node in ori_mg.fx_graph.nodes:
+       ### print nodes with linear op
+       print(node.meta["mase"].model(xs))
+       break
+   ```
+The output are 
+
+```
+tensor([[0.6366, 0.2144, 0.0000, 0.0000, 3.8191],
+        [0.0000, 0.0000, 2.8312, 1.4968, 0.0000],
+        [0.2014, 1.6324, 0.0000, 0.0000, 0.0608],
+        [0.3965, 0.0000, 0.0000, 2.5915, 0.6947],
+        [3.3978, 1.1779, 0.0000, 0.0000, 0.0000],
+        [1.4019, 1.9778, 0.0000, 0.0000, 0.0000],
+        [0.0000, 0.0000, 0.8627, 2.4588, 1.8494],
+        [0.0000, 0.0000, 2.8597, 0.5348, 0.0000]], grad_fn=<ReluBackward0>)
+```
+and
+```
+tensor([[0.1210, 0.0000, 0.0000, 0.0000, 3.6378],
+        [0.0000, 0.0000, 2.1936, 1.7970, 0.0664],
+        [0.2963, 1.8251, 0.0000, 0.0000, 0.0000],
+        [0.9156, 0.1657, 0.0000, 1.4720, 0.8020],
+        [3.5517, 1.0728, 0.0000, 0.0000, 0.0000],
+        [0.4814, 1.9985, 0.4557, 0.0000, 0.0000],
+        [0.0000, 0.0000, 0.4554, 2.5201, 2.1980],
+        [0.0000, 0.0000, 3.3599, 1.5023, 0.0000]], grad_fn=<ReluBackward0>)
+```
+There are slightly differences between each entry of the two outputs, indicating that the weights of these layers are indeed quantised.
