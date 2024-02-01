@@ -54,3 +54,27 @@ def count_flops(graph):
                 total_flop += 0
     
     return graph, {"total_flops": total_flop}
+
+
+'''
+count the number of Bitops of models
+'''
+def count_bitops(graph):
+    total_bitops = 0
+    for node in graph.fx_graph.nodes:
+
+        if node.op == "call_module":
+
+            ### distinguish float or integere
+            data_type = node.meta["mase"].parameters["common"]["args"]["data_in_0"]['type']
+
+            if data_type == "float":
+                in_data = node.meta["mase"].parameters["common"]["args"]["data_in_0"]["value"]
+                out_data = node.meta["mase"].parameters["common"]["results"]["data_out_0"]["value"]
+
+                flop = calculate_modules(module=node.meta["mase"].module, in_data=[in_data], out_data=[out_data])
+
+                node.meta["mase"].parameters["common"]["flop"] = flop["computations"]
+                total_flop += flop["computations"]
+    
+    return graph, {"total_bitops": total_bitops}

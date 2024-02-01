@@ -6,3 +6,5 @@
    - Number of FlOPs (floating-point operations)
    - Number of BitOPs (bit-wise operations)
    - Computation time
+
+2. tpe search: refer to `sampler_map` in `/home/honghaoyang/mase/machop/chop/actions/search/strategies/optuna.py`
