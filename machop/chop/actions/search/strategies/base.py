@@ -89,3 +89,5 @@ class SearchStrategyBase:
         Perform search, and save the results.
         """
         raise NotImplementedError()
+
+
