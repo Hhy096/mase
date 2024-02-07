@@ -127,6 +127,8 @@ for d_config in data_in_frac_widths:
         # in fact, only primitive data types in python are doing implicit copy when a = b happens
         search_spaces.append(copy.deepcopy(pass_args))
 
+# print(search_spaces)
+
 # grid search
 mg, _ = init_metadata_analysis_pass(mg, None)
 mg, _ = add_common_metadata_analysis_pass(mg, {"dummy_in": dummy_in})
