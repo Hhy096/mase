@@ -1,0 +1,68 @@
+# basics
+model = "jsc-lab4"
+dataset = "jsc"
+task = "cls"
+
+max_epochs = 5
+batch_size = 512
+learning_rate = 1e-2
+accelerator = "cpu"
+project = "jsc-lab4"
+seed = 42
+log_every_n_steps = 5
+# load_name = "../mase_output/toy_toy_tiny/software/training_ckpts/best.ckpt"
+# load_type = "pl"
+
+[search.search_space]
+name = "graph/lab4/model_structure_ptq"
+
+[search.search_space.setup]
+by = "name"
+
+[search.search_space.seed.default.config]
+# the only choice "NA" is used to indicate that layers are not quantized by default
+name = ["NA"]
+
+[search.search_space.seed.seq_blocks_2.config]
+# if search.search_space.setup.by = "name", this seed will be used to quantize the mase graph node with name "seq_blocks_2"
+name = ["output_only"]
+channel_multiplier = [2,3,4,5,6]
+
+[search.search_space.seed.seq_blocks_4.config]
+# if search.search_space.setup.by = "name", this seed will be used to quantize the mase graph node with name "seq_blocks_2"
+name = ["output_only"]
+channel_multiplier = [2,3,4,5,6]
+
+[search.strategy]
+name = "optuna"
+eval_mode = false
+
+[search.strategy.sw_runner.basic_train]
+max_epochs = 5
+optimizer = "adam"
+learning_rate = 1e-2
+lr_scheduler = "linear"
+num_warmup_steps = 200
+data_loader = "val_dataloader"
+num_samples = 5000000
+
+[search.strategy.hw_runner.average_bitwidth]
+compare_to = 32 # compare to FP32
+
+[search.strategy.setup]
+n_jobs = 1
+n_trials = 20
+timeout = 20000
+sampler = "tpe"
+# sampler = "brute-force"
+# sum_scaled_metrics = true # single objective
+# direction = "maximize"
+sum_scaled_metrics = false # multi objective
+
+[search.strategy.metrics]
+# loss.scale = 1.0
+# loss.direction = "minimize"
+accuracy.scale = 1.0
+accuracy.direction = "maximize"
+average_bitwidth.scale = 0.2
+average_bitwidth.direction = "minimize"

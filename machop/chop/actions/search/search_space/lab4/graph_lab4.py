@@ -15,21 +15,62 @@ from .....passes.graph.utils import get_mase_op, get_mase_type, get_parent_name
 from ..utils import flatten_dict, unflatten_dict
 from collections import defaultdict
 
-DEFAULT_QUANTIZATION_CONFIG = {
-    "config": {
-        "name": "integer",
-        "bypass": True,
-        "bias_frac_width": 5,
-        "bias_width": 8,
-        "data_in_frac_width": 5,
-        "data_in_width": 8,
-        "weight_frac_width": 3,
-        "weight_width": 8,
-    }
-}
+DEFAULT_QUANTIZATION_CONFIG = {"config":{}}
 
+################################### d#####################################
+#### lab4 
+def instantiate_linear(in_features, out_features, bias):
+    if bias is not None:
+        bias = True
+    return nn.Linear(
+        in_features=in_features,
+        out_features=out_features,
+        bias=bias)
 
-class GraphSearchSpaceMixedPrecisionPTQ(SearchSpaceBase):
+def redefine_linear_transform_pass(mg, pass_args=None):
+
+    main_config = pass_args
+    default = main_config.pop('default', None)
+    if default is None:
+        raise ValueError(f"default value must be provided.")
+    i = 0
+    first_linear_layer = True
+    for node in mg.fx_graph.nodes:
+        i += 1
+        if node.name == "x":
+            continue
+        
+        # if node name is not matched, it won't be tracked
+        config = main_config.get(node.name, default)['config']
+        if node.meta["mase"].parameters["common"]["mase_op"] == "linear":
+
+            if first_linear_layer:
+                initial_in_features = mg.modules[node.target].in_features
+                last_out_features = mg.modules[node.target].out_features
+                
+
+            ori_module = mg.modules[node.target]
+            current_out_features = ori_module.out_features
+            bias = ori_module.bias
+
+            channel_multiplier = config.get("channel_multiplier", 1)
+            current_out_features = current_out_features * channel_multiplier
+            
+            if first_linear_layer:
+                new_module = instantiate_linear(initial_in_features, current_out_features, bias)
+                first_linear_layer = False
+            else:
+                new_module = instantiate_linear(last_out_features, current_out_features, bias)
+
+            parent_name, name = get_parent_name(node.target)
+            setattr(mg.modules[parent_name], name, new_module)
+            last_out_features = current_out_features
+
+    return mg, {}
+
+########################################################################
+
+class GraphSearchSpaceModelStructurePTQ(SearchSpaceBase):
     """
     Post-Training quantization search space for mase graph.
     """
@@ -46,26 +87,26 @@ class GraphSearchSpaceMixedPrecisionPTQ(SearchSpaceBase):
         ), "Must specify entry `by` (config['setup']['by] = 'name' or 'type')"
 
 
-
     def rebuild_model(self, sampled_config, is_eval_mode: bool = True):
         # set train/eval mode before creating mase graph
-
         self.model.to(self.accelerator)
         if is_eval_mode:
             self.model.eval()
         else:
             self.model.train()
 
-        if self.mg is None:
-            assert self.model_info.is_fx_traceable, "Model must be fx traceable"
-            mg = MaseGraph(self.model)
-            mg, _ = init_metadata_analysis_pass(mg, None)
-            mg, _ = add_common_metadata_analysis_pass(
-                mg, {"dummy_in": self.dummy_input}
-            )
-            self.mg = mg
+        # if self.mg is None:
+        assert self.model_info.is_fx_traceable, "Model must be fx traceable"
+        mg = MaseGraph(self.model)
+        mg, _ = init_metadata_analysis_pass(mg, None)
+        mg, _ = add_common_metadata_analysis_pass(
+            mg, {"dummy_in": self.dummy_input}
+        )
+        self.mg = mg
+
         if sampled_config is not None:
-            mg, _ = quantize_transform_pass(self.mg, sampled_config)
+            mg, _ = redefine_linear_transform_pass(self.mg, sampled_config)
+
         mg.model.to(self.accelerator)
         return mg
 

@@ -109,6 +109,25 @@ class Test(nn.Module):
         return self.seq_blocks(x)
 
 
+### test lab4
+class JSC_Three_Linear_Layers(nn.Module):
+    def __init__(self, info):
+        super(JSC_Three_Linear_Layers, self).__init__()
+        self.seq_blocks = nn.Sequential(
+            nn.BatchNorm1d(16),  # 0
+            nn.ReLU(),  # 1
+            nn.Linear(16, 16),  # linear seq_2
+            nn.ReLU(),  # 3
+            nn.Linear(16, 16),  # linear seq_4
+            nn.ReLU(),  # 5
+            nn.Linear(16, 5),  # linear seq_6
+            nn.ReLU(),  # 7
+        )
+
+    def forward(self, x):
+        return self.seq_blocks(x)
+
+
 # Getters ------------------------------------------------------------------------------
 def get_jsc_toy(info):
     # TODO: Tanh is not supported by mase yet
@@ -122,6 +141,10 @@ def get_jsc_tiny(info):
 def get_jsc_s(info):
     return JSC_S(info)
 
-### test
+### test lab1
 def get_test(info):
     return Test(info)
+
+### test lab4
+def get_test_lab4(info):
+    return JSC_Three_Linear_Layers(info)

@@ -1,5 +1,6 @@
 import math
 import torch
+from tqdm import tqdm
 from torchmetrics.classification import MulticlassAccuracy
 from torchmetrics.text import Perplexity
 from torchmetrics import MeanMetric
@@ -60,6 +61,7 @@ class RunnerBasicTrain(SWRunnerBase):
         self._setup_metric()
 
     def _setup_metric(self):
+
         if self.model_info.is_vision_model:
             match self.task:
                 case "classification" | "cls":
@@ -78,6 +80,19 @@ class RunnerBasicTrain(SWRunnerBase):
                     self.metric = Perplexity().to(self.accelerator)
                 case _:
                     raise ValueError(f"task {self.task} is not supported.")
+
+        ####################################################################
+        ### lab4 modification  add for jsc-tiny method
+        elif self.model_info.physical_data_point_classification:
+            match self.task:
+                case "classfication" | "cls":
+                    self.metric = MulticlassAccuracy(
+                        num_classes=self.dataset_info.num_classes
+                    ).to(self.accelerator)
+                case _:
+                    raise ValueError(f"task {self.task} is not supported.")
+        ####################################################################
+
         else:
             raise ValueError(f"model type {self.model_info} is not supported.")
 
@@ -95,6 +110,18 @@ class RunnerBasicTrain(SWRunnerBase):
         self.metric(logits, labels)
         self.loss(loss)
         return loss
+    
+    ################################################################
+    ### define the loss for lab4 
+    def lab4_cls_forward(self, batch, model):
+        x, y = batch[0].to(self.accelerator), batch[1].to(self.accelerator)
+        logits = model(x)
+        criterion = nn.CrossEntropyLoss()
+        loss = criterion(logits, y)
+        self.metric(logits, y)
+        self.loss(loss)
+        return loss
+    ################################################################
 
     def nlp_lm_forward(self, batch, model):
         raise NotImplementedError()
@@ -117,6 +144,15 @@ class RunnerBasicTrain(SWRunnerBase):
                     loss = self.nlp_lm_forward(batch, model)
                 case _:
                     raise ValueError(f"task {self.task} is not supported.")
+        ####################################################################
+        ### lab4 modification add for jsc-tiny method
+        elif self.model_info.physical_data_point_classification:
+            match self.task:
+                case "classfication" | "cls":
+                    loss = self.lab4_cls_forward(batch, model.model)
+                case _:
+                    raise ValueError(f"task {self.task} is not supported.")
+        ####################################################################
         else:
             raise ValueError(f"model type {self.model_info} is not supported.")
 
@@ -133,8 +169,11 @@ class RunnerBasicTrain(SWRunnerBase):
         return reduced
 
     def __call__(self, data_module, model, sampled_config) -> dict[str, float]:
+
         num_samples = self.config["num_samples"]
         max_epochs = self.config["max_epochs"]
+
+        # print(dir(data_module))
 
         assert not (
             num_samples == -1 and max_epochs == -1
@@ -156,7 +195,7 @@ class RunnerBasicTrain(SWRunnerBase):
         # model = torch.compile(model)
 
         optimizer = get_optimizer(
-            model=model,
+            model=model.model,
             optimizer=self.config["optimizer"],
             learning_rate=self.config["learning_rate"],
             weight_decay=self.config.get("weight_decay", 0.0),
@@ -172,7 +211,7 @@ class RunnerBasicTrain(SWRunnerBase):
         assert grad_accumulation_steps > 0, "num_accumulation_steps must be > 0"
 
         train_iter = iter(train_dataloader)
-        for step_i in range(num_batches):
+        for step_i in tqdm(range(num_batches)):
             if step_i > num_batches:
                 break
 
@@ -182,8 +221,9 @@ class RunnerBasicTrain(SWRunnerBase):
                 train_iter = iter(train_dataloader)
                 batch = next(train_iter)
 
-            model.train()
+            model.model.train()
             loss_i = self.forward(self.task, batch, model)
+            # print(loss_i)
             loss_i = loss_i / grad_accumulation_steps
             loss_i.backward()
 

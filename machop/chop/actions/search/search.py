@@ -83,6 +83,7 @@ def search(
         dummy_input=get_dummy_input(model_info, data_module, task, device=accelerator),
         accelerator=accelerator,
     )
+    # print(search_space)
     search_space.build_search_space()
 
     # construct a search strategy

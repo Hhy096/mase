@@ -84,6 +84,7 @@ class SearchStrategyOptuna(SearchStrategyBase):
         return metrics
 
     def objective(self, trial: optuna.trial.Trial, search_space):
+        
         sampled_indexes = {}
         if hasattr(search_space, "optuna_sampler"):
             sampled_config = search_space.optuna_sampler(trial)
