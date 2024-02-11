@@ -3,6 +3,7 @@ from .quantization import (
     GraphSearchSpaceMixedPrecisionPTQ,
 )
 from .lab4 import GraphSearchSpaceModelStructurePTQ
+from .systolic import SystolicMappingSearchSpace
 from .base import SearchSpaceBase
 
 
@@ -10,6 +11,7 @@ SEARCH_SPACE_MAP = {
     "graph/lab4/model_structure_ptq": GraphSearchSpaceModelStructurePTQ,
     "graph/quantize/mixed_precision_ptq": GraphSearchSpaceMixedPrecisionPTQ,
     "module/manual_hf/quantize/llm_mixed_precision_ptq": ManualHFModuleSearchSpaceMixedPrecisionPTQ,
+    "graph/hardware/systolic_mapping": SystolicMappingSearchSpace,
 }
 
 
