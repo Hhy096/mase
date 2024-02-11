@@ -118,8 +118,8 @@ class RunnerBasicTrain(SWRunnerBase):
         logits = model(x)
         criterion = nn.CrossEntropyLoss()
         loss = criterion(logits, y)
-        self.metric(logits, y)
-        self.loss(loss)
+        # self.metric(logits, y)
+        # self.loss(loss)
         return loss
     ################################################################
 
@@ -173,6 +173,8 @@ class RunnerBasicTrain(SWRunnerBase):
         num_samples = self.config["num_samples"]
         max_epochs = self.config["max_epochs"]
 
+        print(model.model)
+
         # print(dir(data_module))
 
         assert not (
@@ -210,26 +212,56 @@ class RunnerBasicTrain(SWRunnerBase):
         grad_accumulation_steps = self.config.get("gradient_accumulation_steps", 1)
         assert grad_accumulation_steps > 0, "num_accumulation_steps must be > 0"
 
-        train_iter = iter(train_dataloader)
-        for step_i in tqdm(range(num_batches)):
-            if step_i > num_batches:
+        # train_iter = iter(train_dataloader)
+        # for step_i in tqdm(range(num_batches)):
+        #     if step_i > num_batches:
+        #         break
+
+        #     try:
+        #         batch = next(train_iter)
+        #     except StopIteration:
+        #         train_iter = iter(train_dataloader)
+        #         batch = next(train_iter)
+
+        #     model.model.train()
+        #     loss_i = self.forward(self.task, batch, model)
+        #     print(loss_i)
+        #     loss_i = loss_i / grad_accumulation_steps
+        #     loss_i.backward()
+
+        #     if (step_i + 1) % grad_accumulation_steps == 0 or step_i == num_batches - 1:
+        #         optimizer.step()
+        #         lr_scheduler.step()
+        #         optimizer.zero_grad()
+
+        ### train
+        model.model.train()
+        for epoch in range(max_epochs):
+            with tqdm(train_dataloader, unit="batch") as tepoch:
+                for batch in tepoch:
+                    tepoch.set_description(f"Epoch: {epoch} | {max_epochs}")
+                    loss_i = self.forward(self.task, batch, model)
+
+                    optimizer.zero_grad()
+                    loss_i.backward()
+                    optimizer.step()
+                    lr_scheduler.step()
+
+                    tepoch.set_postfix(loss=loss_i.item())
+
+        ### evaluation
+        val_dataloader = data_module.val_dataloader()
+
+        model.model.eval()
+        # print("Evaluation start")
+        for i, batch in enumerate(val_dataloader):
+            x, y = batch[0].to(self.accelerator), batch[1].to(self.accelerator)
+            logits = model.model(x)
+            criterion = nn.CrossEntropyLoss()
+            self.metric(logits, y)
+            loss = criterion(logits, y)
+            self.loss(loss)
+            if i >= num_batches - 1:
                 break
-
-            try:
-                batch = next(train_iter)
-            except StopIteration:
-                train_iter = iter(train_dataloader)
-                batch = next(train_iter)
-
-            model.model.train()
-            loss_i = self.forward(self.task, batch, model)
-            # print(loss_i)
-            loss_i = loss_i / grad_accumulation_steps
-            loss_i.backward()
-
-            if (step_i + 1) % grad_accumulation_steps == 0 or step_i == num_batches - 1:
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
 
         return self.compute()

@@ -3,7 +3,7 @@ model = "jsc-lab4"
 dataset = "jsc"
 task = "cls"
 
-max_epochs = 5
+max_epochs = 10
 batch_size = 512
 learning_rate = 1e-2
 accelerator = "cpu"
@@ -25,13 +25,13 @@ name = ["NA"]
 
 [search.search_space.seed.seq_blocks_2.config]
 # if search.search_space.setup.by = "name", this seed will be used to quantize the mase graph node with name "seq_blocks_2"
-name = ["output_only"]
-channel_multiplier = [2,3,4,5,6]
+# name = ["output_only"]
+channel_multiplier = [1,2,3,4]
 
 [search.search_space.seed.seq_blocks_4.config]
 # if search.search_space.setup.by = "name", this seed will be used to quantize the mase graph node with name "seq_blocks_2"
-name = ["output_only"]
-channel_multiplier = [2,3,4,5,6]
+# name = ["output_only"]
+channel_multiplier = [1,2,3,4]
 
 [search.strategy]
 name = "optuna"
@@ -44,7 +44,7 @@ learning_rate = 1e-2
 lr_scheduler = "linear"
 num_warmup_steps = 200
 data_loader = "val_dataloader"
-num_samples = 5000000
+num_samples = 2500000
 
 [search.strategy.hw_runner.average_bitwidth]
 compare_to = 32 # compare to FP32
@@ -53,8 +53,8 @@ compare_to = 32 # compare to FP32
 n_jobs = 1
 n_trials = 20
 timeout = 20000
-sampler = "tpe"
-# sampler = "brute-force"
+# sampler = "tpe"
+sampler = "brute-force"
 # sum_scaled_metrics = true # single objective
 # direction = "maximize"
 sum_scaled_metrics = false # multi objective
