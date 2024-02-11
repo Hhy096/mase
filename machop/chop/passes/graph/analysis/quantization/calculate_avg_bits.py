@@ -41,7 +41,9 @@ def calculate_avg_bits_mg_analysis_pass(graph, pass_args: dict):
                 weights_cost += sum(w_meta["precision"]) * w_size
 
     # on average how many bits do we pay per value?
+    data_overall_bit = data_in_cost
+    w_overall_bit = weights_cost
     data_avg_bit = data_in_cost / data_in_size
     w_avg_bit = weights_cost / weights_size
 
-    return graph, {"data_avg_bit": data_avg_bit, "w_avg_bit": w_avg_bit}
+    return graph, {"data_avg_bit": data_avg_bit, "w_avg_bit": w_avg_bit, "data_overall_bit": data_overall_bit, "w_overall_bit": w_overall_bit}

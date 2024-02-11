@@ -60,21 +60,31 @@ def count_flops(graph):
 count the number of Bitops of models
 '''
 def count_bitops(graph):
-    total_bitops = 0
+    total = 0
     for node in graph.fx_graph.nodes:
 
-        if node.op == "call_module":
+        meta = node.meta["mase"]
+        mase_op = meta.parameters["common"]["mase_op"]
+        mase_type = meta.parameters["common"]["mase_type"]
 
-            ### distinguish float or integere
-            data_type = node.meta["mase"].parameters["common"]["args"]["data_in_0"]['type']
+        if mase_type in ["module", "module_related_func"]:
+            data_in_0 = meta.parameters["common"]["args"]["data_in_0"]["value"]
+            data_out_0 = meta.parameters["common"]["results"]["data_out_0"]["value"]
+            precision_in = meta.parameters["common"]["args"]["data_in_0"]["precision"][0]
 
-            if data_type == "float":
-                in_data = node.meta["mase"].parameters["common"]["args"]["data_in_0"]["value"]
-                out_data = node.meta["mase"].parameters["common"]["results"]["data_out_0"]["value"]
+            count = calculate_modules(meta.module, [data_in_0], [data_out_0])
 
-                flop = calculate_modules(module=node.meta["mase"].module, in_data=[in_data], out_data=[out_data])
+            if mase_op == "linear" or mase_op == "conv1d":    
+                precision_weight = meta.parameters["common"]["args"]["weight"]["precision"][0]
+                precision_bias = meta.parameters["common"]["args"]["bias"]["precision"][0]
+                total += count["computations"] * (precision_in * precision_weight + max(precision_bias, precision_in))
 
-                node.meta["mase"].parameters["common"]["flop"] = flop["computations"]
-                total_flop += flop["computations"]
+            if mase_op == "relu":
+                total += count["computations"] * precision_in
+
+            if mase_op == "batch_norm1d":
+                total += (count["computations"] * (precision_in**2))
+        
+        node.meta["mase"].parameters["common"]["bitops"] = total
     
-    return graph, {"total_bitops": total_bitops}
+    return graph, {"total_flops": total}

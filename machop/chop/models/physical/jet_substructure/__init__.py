@@ -141,7 +141,7 @@ def get_jsc_tiny(info):
 def get_jsc_s(info):
     return JSC_S(info)
 
-### test lab1
+### getter function for test lab1
 def get_test(info):
     return Test(info)
 
