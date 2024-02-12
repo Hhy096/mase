@@ -316,4 +316,4 @@ Problem 2, 3, 4 could be done on together. To integrate the search to `chop` flo
     
 The results of the commands are as follows:
 
-![](../graph/lab4_search.jpg)
+![](https://github.com/Hhy096/mase/blob/main/ADLS_coursework/graph/tpe.jpg?raw=true)
