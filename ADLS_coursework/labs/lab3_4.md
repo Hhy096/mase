@@ -135,7 +135,7 @@ Compare brute-force search with tpe based search which is default setting in `js
 For tpe search, the results are
 ![](../graph/tpe.jpg)
 For brute search, the results are
-![](../graph/brute_force.jpg)
+![](https://github.com/Hhy096/mase/blob/main/ADLS_coursework/graph/brute_force.jpg?raw=true)
 
 
 From the results, we can see that brute force may run a little bit longer than tpe method for each iterations while tpe runs more rounds for searching the best choice. This can be due to the limited search size because tpe should be more efficient search method than brute-force.
