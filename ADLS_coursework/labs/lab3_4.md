@@ -133,7 +133,7 @@ Then run the following commands for brute force search
 Compare brute-force search with tpe based search which is default setting in `jsc_toy_by_type.toml`. We can get the following results.
    
 For tpe search, the results are
-![](../graph/tpe.jpg)
+![](https://github.com/Hhy096/mase/blob/main/ADLS_coursework/graph/tpe.jpg?raw=true)
 For brute search, the results are
 ![](https://github.com/Hhy096/mase/blob/main/ADLS_coursework/graph/brute_force.jpg?raw=true)
 
