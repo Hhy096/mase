@@ -1,6 +1,7 @@
 import sys
 import logging
 import os
+import numpy as np
 from pathlib import Path
 from pprint import pprint as pp
 
@@ -16,10 +17,6 @@ print(os.getcwd())
 
 import sys
 sys.path.append("/home/honghaoyang/mase/machop")
-# figure out the correct path
-# machop_path = Path(".").resolve().parent.parent /"machop"
-# assert machop_path.exists(), "Failed to find machop at: {}".format(machop_path)
-# sys.path.append(str(machop_path))
 
 from chop.dataset import MaseDataModule, get_dataset_info
 from chop.tools.logger import get_logger
@@ -36,6 +33,7 @@ from chop.passes.graph import (
 from chop.tools.get_input import InputGenerator
 from chop.ir.graph.mase_graph import MaseGraph
 
+from chop.tools.checkpoint_load import load_model
 from chop.models import get_model_info, get_model
 
 from chop.passes.graph.transforms import (
@@ -44,10 +42,8 @@ from chop.passes.graph.transforms import (
 )
 
 from chop.passes.graph.analysis.hhy_lab_pass import flop_count
+from chop.passes.graph.analysis.quantization.calculate_avg_bits import calculate_avg_bits_mg_analysis_pass
 
-# logger = getLogger("chop")
-# logger = get_logger("chop")
-# logger.setLevel(logging.INFO)
 
 def compute_model_size(model):
     param_size = 0
@@ -74,13 +70,15 @@ data_module = MaseDataModule(
 data_module.prepare_data()
 data_module.setup()
 
+CHECKPOINT_PATH = '../mase_output/jsc-tiny_classification_jsc_2024-01-29/software/training_ckpts/best.ckpt'
 model_info = get_model_info(model_name)
 model = get_model(
     model_name,
     task="cls",
     dataset_info=data_module.dataset_info,
-    pretrained=False,
-    checkpoint = None)
+    pretrained = True,
+    checkpoint = '../mase_output/jsc-tiny_classification_jsc_2024-01-29/software/training_ckpts/best.ckpt')
+model = load_model(load_name=CHECKPOINT_PATH, load_type="pl", model=model)
 
 input_generator = InputGenerator(
     data_module=data_module,
@@ -135,23 +133,26 @@ mg, _ = add_common_metadata_analysis_pass(mg, {"dummy_in": dummy_in})
 mg, _ = add_software_metadata_analysis_pass(mg, None)
 
 metric = MulticlassAccuracy(num_classes=5)
-num_batchs = 5
+num_batchs = 2000
 # This first loop is basically our search strategy,
 # in this case, it is a simple brute force search
 
 recorded_accs = []
-recorded_flops = []
+recorded_bitwise = []
 recorded_time = []
 recorded_size = []
 
 for i, config in enumerate(search_spaces):
+    print("Input data width: ", end="")
+    print((config['linear']['config']['data_in_width'], config['linear']['config']['data_in_frac_width']), end=" ")
+    print("Weight width: ", end="")
+    print((config['linear']['config']['weight_width'], config['linear']['config']['weight_frac_width']), end=": ")
     mg, _ = quantize_transform_pass(mg, config)
-    # for node in mg.fx_graph.nodes:
-    #     recorded_size.append(compute_model_size(node.meta["mase"].model))
 
-    mg_flop, total_flop  = flop_count.count_flops(mg)
+    mg_bit, total_bit = flop_count.count_bitops(mg)
+    _, size = calculate_avg_bits_mg_analysis_pass(mg, {})
+
     j = 0
-
     # this is the inner loop, where we also call it as a runner.
     acc_avg, loss_avg, time_duration = 0, 0, 0
     accs, losses, time_durations = [], [], []
@@ -171,14 +172,16 @@ for i, config in enumerate(search_spaces):
         if j > num_batchs:
             break
         j += 1
+
     acc_avg = sum(accs) / len(accs)
     loss_avg = sum(losses) / len(losses)
     time_avg = sum(time_durations) / len(time_durations)
     recorded_accs.append(acc_avg)
-    recorded_flops.append(total_flop["total_flops"])
+    recorded_bitwise.append(total_bit["total_bits"])
+    recorded_size.append(size["w_overall_bit"])
     recorded_time.append(time_avg)
 
-print(recorded_accs)
-# print(recorded_flops)
-print(recorded_time)
-# print(recorded_size)
+    print("Accuracy:", np.round(acc_avg.numpy(), 4), end="  ")
+    print("BitOPs:", np.round(total_bit["total_bits"], 4), end="  ")
+    print("Weights bit:", np.round(size["w_overall_bit"], 4), end="  ")
+    print("Latency:", np.round(time_avg, 7))

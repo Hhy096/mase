@@ -87,4 +87,4 @@ def count_bitops(graph):
         
         node.meta["mase"].parameters["common"]["bitops"] = total
     
-    return graph, {"total_flops": total}
+    return graph, {"total_bits": total}
